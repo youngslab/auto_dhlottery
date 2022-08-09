@@ -79,6 +79,10 @@ def dh_get_num_of_purchase_left(auto: Automatic, lottery:  Lottery):
         items = auto.get_elements(By.XPATH, "//html/body/table/tbody/tr")
         for item in items:
             columns = item.find_elements(By.XPATH, './/td')
+            # 조회 결과가 하나도 없는 경우 처리
+            if len(columns) == 1:
+                # <td colspan="8" class="nodata">조회 결과가 없습니다.</td>
+                break
 
             # 복권종류 확인
             if columns[1].text != lottery.value:

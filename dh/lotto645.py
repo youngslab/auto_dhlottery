@@ -5,7 +5,12 @@ from integ_auto import *
 
 
 def lotto645_buy_my_number(auto: Automatic):
-    with auto.get_frame(By.XPATH, '//iframe[@id="ifrm_tab"]'):
+    ifrm_tab = auto.get_element(By.XPATH, '//iframe[@id="ifrm_tab"]')
+    if not ifrm_tab:
+        print("Error: Failed to find iframe")
+        return False
+
+    with auto.get_frame(ifrm_tab):
         my_numbers_btn = auto.get_element(
             By.XPATH, '//*[@id="num4"]')
         auto.click(my_numbers_btn)
@@ -20,7 +25,12 @@ def lotto645_buy_my_number(auto: Automatic):
 
 
 def lotto645_buy_composite(auto: Automatic, numbers, count):
-    with auto.get_frame(By.XPATH, '//iframe[@id="ifrm_tab"]'):
+    ifrm_tab = auto.get_element(By.XPATH, '//iframe[@id="ifrm_tab"]')
+    if not ifrm_tab:
+        print("Error: Failed to find iframe")
+        return False
+
+    with auto.get_frame(ifrm_tab):
         my_numbers_btn = auto.get_element(
             By.XPATH, '//*[@id="num1"]')
         auto.click(my_numbers_btn)
@@ -44,7 +54,12 @@ def lotto645_buy_composite(auto: Automatic, numbers, count):
 
 
 def lotto645_buy_random(auto: Automatic, count):
-    with auto.get_frame(By.XPATH, '//iframe[@id="ifrm_tab"]'):
+    ifrm_tab = auto.get_element(By.XPATH, '//iframe[@id="ifrm_tab"]')
+    if not ifrm_tab:
+        print("Error: Failed to find iframe")
+        return False
+
+    with auto.get_frame(ifrm_tab):
         my_numbers_btn = auto.get_element(
             By.XPATH, '//*[@id="num2"]')
         auto.click(my_numbers_btn)
@@ -69,7 +84,12 @@ def lotto645_buy(auto: Automatic, numbers, total_count):
     lotto645_buy_composite(auto, [], total_count - len(numbers))
 
     # 확인 및 팝업 닫기
-    with auto.get_frame(By.XPATH, '//iframe[@id="ifrm_tab"]'):
+    ifrm_tab = auto.get_element(By.XPATH, '//iframe[@id="ifrm_tab"]')
+    if not ifrm_tab:
+        print("Error: Failed to find iframe")
+        return False
+
+    with auto.get_frame(ifrm_tab):
         buy_btn = auto.get_element(By.ID, 'btnBuy')
         auto.click(buy_btn)
 
