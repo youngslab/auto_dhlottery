@@ -2,7 +2,6 @@
 import os
 import json
 from dh import *
-from integ_auto import *
 
 
 if __name__ == '__main__':
