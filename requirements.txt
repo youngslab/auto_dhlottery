@@ -1,1 +1,4 @@
-integ_auto>=0.3
+selenium==4.7.2
+webdriver-manager==3.8.5
+plum-dispatch==1.7.4
+PyAutoGUI==0.9.53
