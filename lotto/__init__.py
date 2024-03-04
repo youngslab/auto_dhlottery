@@ -1,0 +1,1 @@
+from .lotto645 import *

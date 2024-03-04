@@ -1,0 +1,6 @@
+{
+  "python.analysis.extraPaths": [
+    "./thirdparty/automatic",
+    "./thirdparty/automatic/automatic"
+  ]
+}

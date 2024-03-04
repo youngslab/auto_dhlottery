@@ -1,0 +1,3 @@
+[submodule "thirdparty/automatic"]
+	path = thirdparty/automatic
+	url = git@github.com:youngslab/automatic.git
