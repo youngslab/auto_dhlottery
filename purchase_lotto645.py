@@ -73,7 +73,8 @@ if __name__ == '__main__':
     with open(filepath, 'r', encoding='utf-8') as f:
         config = json.loads(f.read())
 
-    drv = create_driver(selenium_url=config.get('selenium_url'), headless=True)
+    selenium_url = os.getenv("SELENIUM_URL", None)
+    drv = create_driver(selenium_url=selenium_url, headless=True)
     lotto = Lotto645(drv)
 
     if not lotto.login(config['id'], config['pw']):
