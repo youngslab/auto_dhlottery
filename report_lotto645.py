@@ -3,6 +3,7 @@
 # fmt: off
 import sys
 import os
+import json
 from dotenv import load_dotenv
 load_dotenv()
 
@@ -12,11 +13,9 @@ if pythonpath and pythonpath not in sys.path:
 
 from automatic import selenium as s
 from lotto.lotto645 import Lotto645
-import os
-import json
-from reporter import SlackReporter
-# fmt: on
+from lotto import create_driver
 
+# fmt: on
 
 if __name__ == "__main__":
     filepath = os.path.join(os.path.expanduser("~"), ".dh", "config.json")
@@ -24,22 +23,18 @@ if __name__ == "__main__":
     with open(filepath, "r", encoding="utf-8") as f:
         config = json.loads(f.read())
 
-    drv = s.create_driver()
+    selenium_url = os.getenv("SELENIUM_URL", None)
+    drv = create_driver(selenium_url=selenium_url, headless=True)
     lotto = Lotto645(drv)
 
     if not lotto.login(config["id"], config["pw"]):
-        print("Error. Failed to login")
-        exit()
+        print("로그인 실패", file=sys.stderr, flush=True)
+        sys.exit(1)
 
     df = lotto.get_result()
     if df is None:
-        print("Error. Failed to get result")
-        exit()
+        print("결과 확인 실패", file=sys.stderr, flush=True)  # stderr로 즉시 출력
+        sys.exit(1)
 
-    reporter = SlackReporter(
-        config['slack']['token'], config['slack']['channel'])
-    if not reporter.send_dataframe(df):
-        print("Error. Send to message")
-        exit()
-
-    print("Successfully Sent a result")
+    print(f"결과 확인 성공 {df}", file=sys.stdout, flush=True)  # stdout으로 즉시 출력
+    sys.exit(0)

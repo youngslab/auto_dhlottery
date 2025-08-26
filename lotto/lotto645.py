@@ -4,6 +4,56 @@ import automatic.selenium as s
 from pandas import DataFrame
 from typing import Optional
 
+from selenium.webdriver.edge.options import Options as EdgeOptions
+from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium import webdriver
+
+
+def create_driver(*, browser="chrome", selenium_url=None, headless=True):
+    """
+    browser: 'chrome' 또는 'edge'
+    selenium_url: Remote WebDriver URL (예: http://selenium:4444), 없으면 로컬 사용
+    headless: 헤드리스 모드 여부
+    """
+    if browser.lower() == "edge":
+        opts = EdgeOptions()
+        browser_class = webdriver.Edge
+    else:
+        opts = ChromeOptions()
+        browser_class = webdriver.Chrome
+
+    if headless:
+        # Chrome에서는 --headless=new, Edge에서는 기존 headless만 지원될 수 있음
+        opts.add_argument("--headless=new" if browser.lower()
+                          == "chrome" else "--headless")
+    opts.add_argument("--window-size=1920,1080")
+    opts.add_argument("--no-sandbox")
+    opts.add_argument("--disable-dev-shm-usage")
+
+    if selenium_url:
+        driver = webdriver.Remote(
+            command_executor=f"{selenium_url}/wd/hub",
+            options=opts
+        )
+    else:
+        driver = browser_class(options=opts)
+        # Selenium Manager가 드라이버 자동 관리 (Edge 포함)  [oai_citation:1‡selenium.dev](https://www.selenium.dev/documentation/selenium_manager/?utm_source=chatgpt.com) [oai_citation:2‡github.com](https://github.com/lana-20/selenium-manager?utm_source=chatgpt.com)
+
+    # 공통: navigator.platform을 PC로 위조
+    driver.execute_cdp_cmd(
+        "Page.addScriptToEvaluateOnNewDocument",
+        {
+            "source": """
+                Object.defineProperty(navigator, 'platform', {
+                    get: () => 'Win32',
+                    configurable: true
+                });
+            """
+        },
+    )
+
+    return driver
+
 
 class Lotto645(am.Automatic):
     def __init__(self, driver, max_num_of_games=5):
@@ -44,7 +94,7 @@ class Lotto645(am.Automatic):
             )
             self.click(
                 s.Xpath(
-                    "1주일", '//*[@id="frm"]/table/tbody/tr[3]/td/span[2]/a[2]')
+                    "1주일", '//*[@id="frm"]/table/tbody/tr[3]/td/span[2]/a[2]', time)
             )
             self.click(s.Id("조회버튼", "submit_btn"))
 
