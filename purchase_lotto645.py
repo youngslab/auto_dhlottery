@@ -78,8 +78,8 @@ if __name__ == '__main__':
     lotto = Lotto645(drv)
 
     if not lotto.login(config['id'], config['pw']):
-        print("로그인 실패")
-        exit(-1)
+        print("로그인 실패", file=sys.stderr, flush=True)
+        sys.exit(1)
 
     try:
         lotto.buy(config['lotto645_numbers'])
@@ -87,5 +87,5 @@ if __name__ == '__main__':
         print(result)
 
     except Exception as e:
-        print(f"구매 실패: {e}")
-        exit(-1)
+        print(f"구매 실패: {e}", file=sys.stderr, flush=True)  # stderr로 즉시 출력
+        sys.exit(1)
