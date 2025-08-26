@@ -1,6 +1,4 @@
 selenium
-webdriver-manager
 pandas
 lxml
 python-dotenv
-prettytable
