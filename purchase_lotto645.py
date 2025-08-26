@@ -6,7 +6,7 @@ from selenium import webdriver
 import json
 import sys
 import os
-from reporter import SlackReporter
+
 # fmt: off
 module_directory = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), 
@@ -78,9 +78,13 @@ if __name__ == '__main__':
 
     if not lotto.login(config['id'], config['pw']):
         print("로그인 실패")
-        exit()
+        exit(-1)
 
     try:
         lotto.buy(config['lotto645_numbers'])
+        result = lotto.get_result()
+        print(result)
+
     except Exception as e:
         print(f"구매 실패: {e}")
+        exit(-1)
