@@ -1,20 +1,20 @@
 #!python3
 
 # fmt: off
+
+import json
 import sys
 import os
-import json
-from dotenv import load_dotenv
-load_dotenv()
 
-pythonpath = os.environ.get("PYTHONPATH")
-if pythonpath and pythonpath not in sys.path:
-    sys.path.append(pythonpath)
+module_directory = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), 
+    "thirdparty", "automatic")
+if module_directory not in sys.path:
+    sys.path.append(module_directory)
 
-from automatic import selenium as s
-from lotto.lotto645 import Lotto645
+import automatic.selenium as s
+from lotto import Lotto645
 from lotto import create_driver
-
 # fmt: on
 
 if __name__ == "__main__":
