@@ -94,7 +94,7 @@ class Lotto645(am.Automatic):
             )
             self.click(
                 s.Xpath(
-                    "1주일", '//*[@id="frm"]/table/tbody/tr[3]/td/span[2]/a[2]', time)
+                    "1주일", '//*[@id="frm"]/table/tbody/tr[3]/td/span[2]/a[2]')
             )
             self.click(s.Id("조회버튼", "submit_btn"))
 
