@@ -9,7 +9,7 @@ from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium import webdriver
 
 
-def create_driver(*, browser="chrome", selenium_url=None, headless=True):
+def create_driver(*, browser="edge", selenium_url=None, headless=True):
     """
     browser: 'chrome' 또는 'edge'
     selenium_url: Remote WebDriver URL (예: http://selenium:4444), 없으면 로컬 사용
@@ -84,36 +84,35 @@ class Lotto645(am.Automatic):
             # Error: Failed to Login
             return False
 
-    def get_num_of_purchases_in_this_week(self):
+    def get_result(self) -> Optional[DataFrame]:
         try:
             self.go(
                 s.Url(
-                    "구매내역",
-                    "https://www.dhlottery.co.kr/myPage.do?method=lottoBuyListView",
+                    "구매/당첨내역",
+                    "https://www.dhlottery.co.kr/myPage.do?method=lottoBuyListView", differ=5
                 )
             )
-            self.click(
-                s.Xpath(
-                    "1주일", '//*[@id="frm"]/table/tbody/tr[3]/td/span[2]/a[2]')
-            )
+            self.click(s.Xpath("일주일", '//a[text()="1주일"]'))
             self.click(s.Id("조회버튼", "submit_btn"))
 
-            frame = s.Id("구매내역 프레임", "lottoBuyList")
-            table = self.table(s.Xpath("구매내역", "//table", parent=frame))
-            if table.empty:
-                print("구매내역 테이블을 찾을 수 가 없습니다")
-                return False
-
-            table = table[
-                (table["복권명"] == "로또6/45") & (table["당첨결과"] == "미추첨")
-            ]
-
-            return table["구입매수"].sum()
+            frame = s.Id("구매내역 프레임", "lottoBuyList", differ=5)
+            return self.table(
+                s.Xpath("구매내역", "//table[1]", parent=frame, timeout=10))
 
         except Exception as e:
-            print(f"구매이력을 조회하는데 실패하였습니다. {e}")
-            # Error: Failed to Login
+            print(f"데이터를 가져오는데 실패하였습니다. reason={e}")
+            return None
+
+    def get_num_of_purchases_in_this_week(self):
+        table = self.get_result()
+        if table is None:
             return -1
+
+        table = table[
+            (table["복권명"] == "로또6/45") & (table["당첨결과"] == "미추첨")
+        ]
+
+        return int(table["구입매수"].sum())
 
     def __buy_composite(self, game):
         fPanel = s.Id("프레임", "ifrm_tab")
@@ -169,23 +168,3 @@ class Lotto645(am.Automatic):
             )
         )
         self.click(s.Id("닫기버튼", "closeLayer", parent=fPanel))
-
-    def get_result(self) -> Optional[DataFrame]:
-        try:
-            self.go(
-                s.Url(
-                    "구매/당첨내역",
-                    "https://www.dhlottery.co.kr/myPage.do?method=lottoBuyListView",
-                )
-            )
-            self.click(s.Xpath("일주일", '//a[text()="1주일"]'))
-            self.click(s.Xpath("조회버튼", '//a[text()="조회"]'))
-            # TODO: wait for a data updated
-            time.sleep(3)
-            return self.table(s.Xpath("상태 테이블", '//table[contains(@class, "tbl_data_col")]',
-                                      parent=s.Id("리스트 프레임", "lottoBuyList")))
-
-        except Exception as e:
-            print(f"데이터를 가져오는데 실패하였습니다. reason={e}")
-            # Error: Failed to Login
-            return None
