@@ -61,15 +61,15 @@ class Lotto645(am.Automatic):
         self.__max_num_of_games = max_num_of_games
         # create context
 
-        selenium = s.Context(self.__drv, timeout=10, differ=0)
-        super().__init__([selenium])
+        self.__selenium = s.Context(self.__drv, timeout=10, differ=0)
+        super().__init__([self.__selenium])
 
     def login(self, id, pw):
         try:
             self.go(
                 s.Url("로그인 페이지", "https://dhlottery.co.kr/common.do?method=main")
             )
-            self.click(s.Xpath("로그인링크", '//a[text()="로그인"]'))
+            self.click(s.Xpath("로그인링크", '//a[text()="로그인"]', differ=5))
             self.type(
                 s.Xpath("PW 입력상자", '//input[@title="비밀번호"]', differ=1), pw
             )
@@ -78,6 +78,10 @@ class Lotto645(am.Automatic):
             self.click(
                 s.Xpath("로그인 확인", '//div[@class="form"]/a[text()="로그인"]')
             )
+
+            # It seems that the popup windows affect selenium finding elements
+            self.__selenium.close_other_windows()
+
             return True
         except Exception as e:
             print(f"로그인에 실패하였습니다. reason={e}")
