@@ -99,7 +99,7 @@ class Lotto645(am.Automatic):
             self.click(s.Xpath("일주일", '//a[text()="1주일"]'))
             self.click(s.Id("조회버튼", "submit_btn"))
 
-            frame = s.Id("구매내역 프레임", "lottoBuyList", differ=5)
+            frame = s.Id("구매내역 프레임", "lottoBuyList", differ=10)
             return self.table(
                 s.Xpath("구매내역", "//table[1]", parent=frame, timeout=10))
 

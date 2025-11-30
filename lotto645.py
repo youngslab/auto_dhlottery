@@ -69,7 +69,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     config = load_config()
 
     selenium_url = os.getenv("SELENIUM_URL", None)
-    driver = create_driver(selenium_url=selenium_url, headless=True)
+    driver = create_driver(browser="chrome", selenium_url=selenium_url, headless=False)
     lotto = Lotto645(driver)
     try:
         if not lotto.login(config["id"], config["pw"]):
