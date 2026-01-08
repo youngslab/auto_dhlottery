@@ -67,16 +67,16 @@ class Lotto645(am.Automatic):
     def login(self, id, pw):
         try:
             self.go(
-                s.Url("로그인 페이지", "https://dhlottery.co.kr/common.do?method=main")
-            )
-            self.click(s.Xpath("로그인링크", '//a[text()="로그인"]', differ=5))
-            self.type(
-                s.Xpath("PW 입력상자", '//input[@title="비밀번호"]', differ=1), pw
+                s.Url("로그인 페이지", "https://dhlottery.co.kr/login")
             )
             self.type(
-                s.Xpath("ID 입력상자", '//input[@title="아이디"]', differ=1), id)
+                s.Id("ID 입력상자", "inpUserId", differ=1), id
+            )
+            self.type(
+                s.Id("PW 입력상자", "inpUserPswdEncn", differ=1), pw
+            )
             self.click(
-                s.Xpath("로그인 확인", '//div[@class="form"]/a[text()="로그인"]')
+                s.Id("로그인 확인", "btnLogin")
             )
 
             # It seems that the popup windows affect selenium finding elements
@@ -93,15 +93,42 @@ class Lotto645(am.Automatic):
             self.go(
                 s.Url(
                     "구매/당첨내역",
-                    "https://www.dhlottery.co.kr/myPage.do?method=lottoBuyListView", differ=5
+                    "https://dhlottery.co.kr/mypage/mylotteryledger", differ=5
                 )
             )
-            self.click(s.Xpath("일주일", '//a[text()="1주일"]'))
-            self.click(s.Id("조회버튼", "submit_btn"))
+            self.click(s.Xpath("최근 1주일", '//button[contains(text(), "최근 1주일")]'))
+            self.click(s.Id("검색버튼", "btnSrch"))
 
-            frame = s.Id("구매내역 프레임", "lottoBuyList", differ=10)
-            return self.table(
-                s.Xpath("구매내역", "//table[1]", parent=frame, timeout=10))
+            time.sleep(2)  # 검색 결과 로딩 대기
+
+            # 새 페이지는 ul/li 구조이므로 JavaScript로 데이터 추출
+            script = """
+            const rows = document.querySelectorAll('#winning-history-list .whl-body > li');
+            const data = [];
+            rows.forEach(row => {
+                const cols = row.querySelectorAll('.whl-col');
+                if (cols.length > 0) {
+                    data.push({
+                        '구입일자': cols[0]?.textContent?.trim() || '',
+                        '복권명': cols[1]?.textContent?.trim() || '',
+                        '회차': cols[2]?.textContent?.trim() || '',
+                        '선택번호': cols[3]?.textContent?.trim() || '',
+                        '구입매수': cols[4]?.textContent?.trim() || '',
+                        '당첨결과': cols[5]?.textContent?.trim() || '',
+                        '당첨금': cols[6]?.textContent?.trim() || '',
+                        '추첨일자': cols[7]?.textContent?.trim() || ''
+                    });
+                }
+            });
+            return data;
+            """
+            result = self.__drv.execute_script(script)
+
+            if not result:
+                return DataFrame(columns=['구입일자', '복권명', '회차', '선택번호',
+                                          '구입매수', '당첨결과', '당첨금', '추첨일자'])
+
+            return DataFrame(result)
 
         except Exception as e:
             print(f"데이터를 가져오는데 실패하였습니다. reason={e}")
@@ -112,11 +139,14 @@ class Lotto645(am.Automatic):
         if table is None:
             return -1
 
+        # 새 페이지에서는 복권명이 "로또645"로 표시됨
         table = table[
-            (table["복권명"] == "로또6/45") & (table["당첨결과"] == "미추첨")
+            (table["복권명"].str.contains("로또", na=False)) &
+            (table["당첨결과"] == "미추첨")
         ]
 
-        return int(table["구입매수"].sum())
+        # 구입매수가 문자열일 수 있으므로 숫자로 변환
+        return int(table["구입매수"].astype(str).str.replace(",", "").astype(float).sum())
 
     def __buy_composite(self, game):
         fPanel = s.Id("프레임", "ifrm_tab")
