@@ -1,0 +1,25 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auto-dhlottery"
+version = "0.1.0"
+requires-python = ">=3.9"
+dependencies = [
+    "selenium",
+    "pandas",
+    "lxml",
+    "python-dotenv",
+    "prettytable",
+    "automatic-py @ git+https://github.com/youngslab/automatic.git",
+]
+
+[project.scripts]
+lotto645 = "lotto645:main"
+
+[tool.setuptools]
+py-modules = ["lotto645", "purchase_lotto645", "report_lotto645", "reporter"]
+
+[tool.setuptools.packages.find]
+where = ["."]
