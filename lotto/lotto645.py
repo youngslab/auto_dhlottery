@@ -93,13 +93,15 @@ class Lotto645(am.Automatic):
             self.go(
                 s.Url(
                     "구매/당첨내역",
-                    "https://dhlottery.co.kr/mypage/mylotteryledger", differ=5
+                    "https://dhlottery.co.kr/mypage/mylotteryledger",
                 )
             )
+            time.sleep(5)  # differ=5가 go()에서 무시되므로 명시적 대기 (페이지 자동검색 AJAX 완료 대기)
+
             self.click(s.Xpath("최근 1주일", '//button[contains(text(), "최근 1주일")]'))
             self.click(s.Id("검색버튼", "btnSrch"))
 
-            time.sleep(2)  # 검색 결과 로딩 대기
+            time.sleep(3)  # 검색 결과 로딩 대기
 
             # 새 페이지는 ul/li 구조이므로 JavaScript로 데이터 추출
             script = """
