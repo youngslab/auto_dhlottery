@@ -141,6 +141,8 @@ class Lotto645(am.Automatic):
         if table is None:
             return -1
 
+        print(f"[DEBUG] 전체 구매 내역:\n{table[['복권명','구입매수','당첨결과']].to_string()}", flush=True)
+
         # 새 페이지에서는 복권명이 "로또645"로 표시됨
         table = table[
             (table["복권명"].str.contains("로또", na=False)) &
