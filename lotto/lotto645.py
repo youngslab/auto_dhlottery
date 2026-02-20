@@ -203,4 +203,15 @@ class Lotto645(am.Automatic):
                 parent=fPanel,
             )
         )
-        self.click(s.Id("닫기버튼", "closeLayer", parent=fPanel))
+        # 구매 완료 후 결과 팝업 닫기
+        # closeLayer는 사이트 개편 후 존재하지 않을 수 있으므로 순차적으로 시도
+        for locator in [
+            s.Id("닫기버튼", "closeLayer", parent=fPanel),
+            s.Id("닫기버튼", "closeLayer"),
+            s.Xpath("닫기버튼", '//input[@value="확인"]', parent=fPanel),
+        ]:
+            try:
+                self.click(locator)
+                break
+            except Exception:
+                pass
