@@ -141,16 +141,15 @@ class Lotto645(am.Automatic):
         if table is None:
             return -1
 
-        print(f"[DEBUG] 전체 구매 내역:\n{table[['복권명','구입매수','당첨결과']].to_string()}", flush=True)
-
-        # 새 페이지에서는 복권명이 "로또645"로 표시됨
+        # 셀 값에 라벨이 포함될 수 있으므로 (예: "당첨결과  미추첨") contains 사용
         table = table[
             (table["복권명"].str.contains("로또", na=False)) &
-            (table["당첨결과"] == "미추첨")
+            (table["당첨결과"].str.contains("미추첨", na=False))
         ]
 
-        # 구입매수가 문자열일 수 있으므로 숫자로 변환
-        return int(table["구입매수"].astype(str).str.replace(",", "").astype(float).sum())
+        # 구입매수 셀에 라벨 포함 가능 (예: "구입매수  5"), 숫자만 추출
+        nums = table["구입매수"].astype(str).str.extract(r'(\d+)')[0]
+        return int(nums.astype(float).sum())
 
     def __buy_composite(self, game):
         fPanel = s.Id("프레임", "ifrm_tab")
