@@ -98,7 +98,7 @@ class Lotto645(am.Automatic):
             )
             time.sleep(5)  # differ=5가 go()에서 무시되므로 명시적 대기 (페이지 자동검색 AJAX 완료 대기)
 
-            self.click(s.Xpath("최근 1주일", '//button[contains(text(), "최근 1주일")]'))
+            self.click(s.Xpath("1주일", "//button[contains(normalize-space(.), '1주일')]"))
             self.click(s.Id("검색버튼", "btnSrch"))
 
             time.sleep(3)  # 검색 결과 로딩 대기
