@@ -1,11 +1,15 @@
+import re
 import time
 import automatic as am
 import automatic.selenium as s
 from pandas import DataFrame
 from typing import Optional
 
+from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.chrome.options import Options as ChromeOptions
+from selenium.webdriver.common.by import By
+from selenium.webdriver.support.ui import WebDriverWait
 from selenium import webdriver
 
 
@@ -174,6 +178,55 @@ class Lotto645(am.Automatic):
         self.select(s.Id("적용수량", "amoundApply", parent=fPanel), "1")
         self.click(s.Id("확인버튼", "btnSelectNum", parent=fPanel))
 
+    def __in_purchase_frame(self, callback):
+        """Run a Selenium callback inside the lottery purchase iframe."""
+        self.__drv.switch_to.default_content()
+        frame = self.__drv.find_element(By.ID, "ifrm_tab")
+        self.__drv.switch_to.frame(frame)
+        try:
+            return callback()
+        finally:
+            self.__drv.switch_to.default_content()
+
+    @staticmethod
+    def __parse_won_amount(value):
+        digits = re.sub(r"[^0-9]", "", str(value))
+        if not digits:
+            raise ValueError(f"금액을 해석할 수 없습니다: {value!r}")
+        return int(digits)
+
+    def _get_deposit_balance(self):
+        balance_text = self.__in_purchase_frame(
+            lambda: self.__drv.find_element(By.ID, "moneyBalance").text
+        )
+        return self.__parse_won_amount(balance_text)
+
+    def _wait_for_purchase_outcome(self):
+        """Return the visible server-side purchase outcome, never a click outcome."""
+        def visible_outcome():
+            report = self.__drv.find_element(By.ID, "report")
+            if report.is_displayed():
+                return "success", ""
+
+            alert = self.__drv.find_element(By.ID, "popupLayerAlert")
+            if alert.is_displayed():
+                message = alert.find_element(By.CSS_SELECTOR, ".layer-message").text.strip()
+                return "failure", message or "동행복권 구매 오류"
+
+            recommendation = self.__drv.find_element(By.ID, "recommend720Plus")
+            if recommendation.is_displayed():
+                message = " ".join(recommendation.text.split())
+                return "failure", message or "이번 회차 구매 한도 초과"
+
+            return None
+
+        try:
+            return WebDriverWait(self.__drv, 20).until(
+                lambda _driver: self.__in_purchase_frame(visible_outcome)
+            )
+        except TimeoutException as exc:
+            raise Exception("구매 결과를 확인하지 못했습니다.") from exc
+
     def buy(self, games):
         num_games = self.get_num_of_purchases_in_this_week()
         if num_games == -1:
@@ -191,6 +244,14 @@ class Lotto645(am.Automatic):
                 "https://el.dhlottery.co.kr/game/TotalGame.jsp?LottoId=LO40",
             )
         )
+
+        required_amount = num_games * 1000
+        balance = self._get_deposit_balance()
+        if balance < required_amount:
+            raise Exception(
+                f"예치금 부족: 보유 {balance:,}원, 필요 {required_amount:,}원"
+            )
+
         for i in range(num_games):
             self.__buy_composite(games[i] if len(games) > i else [])
 
@@ -204,15 +265,9 @@ class Lotto645(am.Automatic):
                 parent=fPanel,
             )
         )
-        # 구매 완료 후 결과 팝업 닫기
-        # closeLayer는 사이트 개편 후 존재하지 않을 수 있으므로 순차적으로 시도
-        for locator in [
-            s.Id("닫기버튼", "closeLayer", parent=fPanel),
-            s.Id("닫기버튼", "closeLayer"),
-            s.Xpath("닫기버튼", '//input[@value="확인"]', parent=fPanel),
-        ]:
-            try:
-                self.click(locator)
-                break
-            except Exception:
-                pass
+
+        outcome, message = self._wait_for_purchase_outcome()
+        if outcome != "success":
+            raise Exception(f"구매 처리 실패: {message}")
+
+        self.click(s.Id("구매내역 확인", "closeLayer", parent=fPanel))
