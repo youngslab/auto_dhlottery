@@ -32,6 +32,13 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         action="store_true",
         help="Fetch the latest draw results.",
     )
+    action_group.add_argument(
+        "--prepare-deposit",
+        type=int,
+        choices=sorted(Lotto645.DEPOSIT_AMOUNTS),
+        metavar="WON",
+        help="Register a virtual-account deposit request without transferring funds.",
+    )
     return parser.parse_args(argv)
 
 
@@ -43,6 +50,16 @@ def run_purchase(lotto: Lotto645, config: Dict[str, Any]) -> int:
 
     except Exception as exc:  # pylint: disable=broad-except
         print(f"구매 실패: {exc}", file=sys.stderr, flush=True)
+        return 1
+
+
+def run_prepare_deposit(lotto: Lotto645, amount: int) -> int:
+    try:
+        lotto.prepare_deposit(amount)
+        print(f"충전 요청 성공: {amount:,}원", file=sys.stdout, flush=True)
+        return 0
+    except Exception as exc:  # pylint: disable=broad-except
+        print(f"충전 요청 실패: {exc}", file=sys.stderr, flush=True)
         return 1
 
 
@@ -78,6 +95,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
 
         if args.purchase:
             return run_purchase(lotto, config)
+        if args.prepare_deposit is not None:
+            return run_prepare_deposit(lotto, args.prepare_deposit)
         return run_report(lotto)
     finally:
         try:

@@ -9,6 +9,8 @@ from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.edge.options import Options as EdgeOptions
 from selenium.webdriver.chrome.options import Options as ChromeOptions
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import Select
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium import webdriver
 
@@ -60,6 +62,8 @@ def create_driver(*, browser="edge", selenium_url=None, headless=True):
 
 
 class Lotto645(am.Automatic):
+    DEPOSIT_AMOUNTS = {5000, 10000, 20000, 30000, 50000, 100000, 150000}
+
     def __init__(self, driver, max_num_of_games=5):
         self.__drv = driver
         self.__max_num_of_games = max_num_of_games
@@ -226,6 +230,51 @@ class Lotto645(am.Automatic):
             )
         except TimeoutException as exc:
             raise Exception("구매 결과를 확인하지 못했습니다.") from exc
+
+    def _open_virtual_account_deposit(self):
+        wait = WebDriverWait(self.__drv, 15)
+        wait.until(EC.element_to_be_clickable((By.ID, "tab2"))).click()
+        wait.until(
+            lambda driver: driver.execute_script(
+                "return Boolean(window.MndpChrgM) && "
+                "MndpChrgM.props.virtualAccountUse !== '';"
+            )
+        )
+
+    def _submit_deposit_request(self, amount):
+        Select(self.__drv.find_element(By.ID, "VcAmt")).select_by_value(str(amount))
+        self.__drv.find_element(By.ID, "btnChrg").click()
+
+        try:
+            amount_text = WebDriverWait(self.__drv, 20).until(
+                lambda driver: (
+                    driver.find_element(By.ID, "charge_amt").text
+                    if driver.find_element(By.CSS_SELECTOR, ".charge").is_displayed()
+                    else False
+                )
+            )
+        except TimeoutException as exc:
+            raise Exception("가상계좌 충전 요청 결과를 확인하지 못했습니다.") from exc
+
+        return self.__parse_won_amount(amount_text)
+
+    def prepare_deposit(self, amount):
+        if amount not in self.DEPOSIT_AMOUNTS:
+            raise ValueError(f"지원하지 않는 충전 금액: {amount:,}원")
+
+        self.go(
+            s.Url(
+                "예치금 충전 페이지",
+                "https://www.dhlottery.co.kr/mypage/mndpChrg",
+            )
+        )
+        self._open_virtual_account_deposit()
+        registered_amount = self._submit_deposit_request(amount)
+        if registered_amount != amount:
+            raise Exception(
+                "충전 요청 금액 불일치: "
+                f"요청 {amount:,}원, 등록 {registered_amount:,}원"
+            )
 
     def buy(self, games):
         num_games = self.get_num_of_purchases_in_this_week()
