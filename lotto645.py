@@ -1,10 +1,12 @@
 #!python3
 
 import argparse
+from datetime import date, datetime
 import json
 import os
 import sys
 from typing import Any, Dict, Optional, Sequence
+from zoneinfo import ZoneInfo
 import automatic.selenium as s  # noqa: F401
 from lotto import Lotto645, create_driver
 from prettytable import PrettyTable
@@ -39,6 +41,16 @@ def parse_args(argv: Optional[Sequence[str]] = None) -> argparse.Namespace:
         metavar="WON",
         help="Register a virtual-account deposit request without transferring funds.",
     )
+    action_group.add_argument(
+        "--maintain-monthly-deposit",
+        type=int,
+        choices=sorted(Lotto645.DEPOSIT_AMOUNTS),
+        metavar="WON",
+        help=(
+            "During the monthly funding window, verify a matching deposit or "
+            "refresh its virtual-account request."
+        ),
+    )
     return parser.parse_args(argv)
 
 
@@ -60,6 +72,49 @@ def run_prepare_deposit(lotto: Lotto645, amount: int) -> int:
         return 0
     except Exception as exc:  # pylint: disable=broad-except
         print(f"충전 요청 실패: {exc}", file=sys.stderr, flush=True)
+        return 1
+
+
+def monthly_funding_cycle(today: date):
+    """Return whether today is active and the cycle's inclusive start date."""
+    if today.day >= 24:
+        return True, today.replace(day=24)
+    if today.day <= 7:
+        if today.month == 1:
+            return True, date(today.year - 1, 12, 24)
+        return True, date(today.year, today.month - 1, 24)
+    return False, None
+
+
+def run_maintain_monthly_deposit(
+    lotto: Lotto645,
+    amount: int,
+    today: Optional[date] = None,
+) -> int:
+    current_date = today or datetime.now(ZoneInfo("Asia/Seoul")).date()
+    active, cycle_start = monthly_funding_cycle(current_date)
+    result = {
+        "amount": amount,
+        "date": current_date.isoformat(),
+        "notify": False,
+    }
+
+    try:
+        if not active:
+            result["status"] = "outside_window"
+        elif lotto.has_deposit(amount, cycle_start, current_date):
+            result["status"] = "credited"
+            result["cycleStart"] = cycle_start.isoformat()
+        else:
+            lotto.prepare_deposit(amount)
+            result["status"] = "requested"
+            result["cycleStart"] = cycle_start.isoformat()
+            result["notify"] = True
+
+        print(json.dumps(result, ensure_ascii=False), file=sys.stdout, flush=True)
+        return 0
+    except Exception as exc:  # pylint: disable=broad-except
+        print(f"월간 충전 관리 실패: {exc}", file=sys.stderr, flush=True)
         return 1
 
 
@@ -97,6 +152,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             return run_purchase(lotto, config)
         if args.prepare_deposit is not None:
             return run_prepare_deposit(lotto, args.prepare_deposit)
+        if args.maintain_monthly_deposit is not None:
+            return run_maintain_monthly_deposit(
+                lotto,
+                args.maintain_monthly_deposit,
+            )
         return run_report(lotto)
     finally:
         try:

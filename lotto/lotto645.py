@@ -3,6 +3,7 @@ import time
 import automatic as am
 import automatic.selenium as s
 from pandas import DataFrame
+from datetime import date
 from typing import Optional
 
 from selenium.common.exceptions import TimeoutException
@@ -275,6 +276,67 @@ class Lotto645(am.Automatic):
                 "충전 요청 금액 불일치: "
                 f"요청 {amount:,}원, 등록 {registered_amount:,}원"
             )
+
+    def get_deposit_history(self, start_date: date, end_date: date):
+        """Return deposit ledger entries for an inclusive date range."""
+        if start_date > end_date:
+            raise ValueError("충전 내역 조회 시작일이 종료일보다 늦습니다.")
+
+        self.go(
+            s.Url(
+                "예치금 충전 페이지",
+                "https://www.dhlottery.co.kr/mypage/mndpChrg",
+            )
+        )
+        WebDriverWait(self.__drv, 15).until(
+            lambda driver: driver.execute_script(
+                "return Boolean(window.MndpChrgM) && "
+                "Boolean(window.ajaxUtil);"
+            )
+        )
+
+        result = self.__drv.execute_async_script(
+            """
+            const startDate = arguments[0];
+            const endDate = arguments[1];
+            const done = arguments[2];
+            const params = {
+                srchStrDt: startDate,
+                srchEndDt: endDate,
+                pageNum: 1,
+                recordCountPerPage: 100
+            };
+            const options = {method: 'GET', async: true};
+            ajaxUtil.sendHttpJson(
+                params,
+                MndpChrgM.path + '/selectChrgDsctnList.do',
+                options,
+                function(code, message, payload) {
+                    done({code, message, payload: payload || null});
+                }
+            );
+            """,
+            start_date.strftime("%Y%m%d"),
+            end_date.strftime("%Y%m%d"),
+        )
+
+        data = ((result or {}).get("payload") or {}).get("data")
+        entries = data.get("list") if isinstance(data, dict) else None
+        if entries is None:
+            message = (result or {}).get("message") or "응답 데이터 없음"
+            raise Exception(f"충전 내역 조회 실패: {message}")
+        return entries
+
+    def has_deposit(self, amount: int, start_date: date, end_date: date):
+        """Return True when an exact deposit was credited in the date range."""
+        for entry in self.get_deposit_history(start_date, end_date):
+            try:
+                credited = int(entry.get("insMoney") or 0)
+            except (TypeError, ValueError):
+                continue
+            if credited == amount:
+                return True
+        return False
 
     def buy(self, games):
         num_games = self.get_num_of_purchases_in_this_week()

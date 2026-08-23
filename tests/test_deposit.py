@@ -1,8 +1,14 @@
 import unittest
+from datetime import date
 from unittest.mock import Mock
 
 from lotto.lotto645 import Lotto645
-from lotto645 import parse_args, run_prepare_deposit
+from lotto645 import (
+    monthly_funding_cycle,
+    parse_args,
+    run_maintain_monthly_deposit,
+    run_prepare_deposit,
+)
 
 
 class DepositRequestTest(unittest.TestCase):
@@ -49,6 +55,75 @@ class DepositRequestTest(unittest.TestCase):
         lotto.prepare_deposit.side_effect = Exception("충전 요청 실패")
 
         self.assertEqual(run_prepare_deposit(lotto, 5000), 1)
+
+    def test_cli_accepts_monthly_deposit_maintenance(self):
+        args = parse_args(["--maintain-monthly-deposit", "30000"])
+
+        self.assertEqual(args.maintain_monthly_deposit, 30000)
+
+
+class MonthlyFundingTest(unittest.TestCase):
+    def test_cycle_is_active_from_twenty_fourth(self):
+        active, start = monthly_funding_cycle(date(2026, 8, 24))
+
+        self.assertTrue(active)
+        self.assertEqual(start, date(2026, 8, 24))
+
+    def test_cycle_continues_through_seventh_of_next_month(self):
+        active, start = monthly_funding_cycle(date(2026, 9, 7))
+
+        self.assertTrue(active)
+        self.assertEqual(start, date(2026, 8, 24))
+
+    def test_cycle_is_inactive_outside_funding_window(self):
+        active, start = monthly_funding_cycle(date(2026, 9, 8))
+
+        self.assertFalse(active)
+        self.assertIsNone(start)
+
+    def test_existing_monthly_deposit_does_not_create_request(self):
+        lotto = Mock()
+        lotto.has_deposit.return_value = True
+
+        result = run_maintain_monthly_deposit(
+            lotto,
+            30000,
+            today=date(2026, 8, 25),
+        )
+
+        self.assertEqual(result, 0)
+        lotto.has_deposit.assert_called_once_with(
+            30000,
+            date(2026, 8, 24),
+            date(2026, 8, 25),
+        )
+        lotto.prepare_deposit.assert_not_called()
+
+    def test_missing_monthly_deposit_refreshes_request(self):
+        lotto = Mock()
+        lotto.has_deposit.return_value = False
+
+        result = run_maintain_monthly_deposit(
+            lotto,
+            30000,
+            today=date(2026, 8, 26),
+        )
+
+        self.assertEqual(result, 0)
+        lotto.prepare_deposit.assert_called_once_with(30000)
+
+    def test_inactive_day_does_not_query_or_request(self):
+        lotto = Mock()
+
+        result = run_maintain_monthly_deposit(
+            lotto,
+            30000,
+            today=date(2026, 8, 8),
+        )
+
+        self.assertEqual(result, 0)
+        lotto.has_deposit.assert_not_called()
+        lotto.prepare_deposit.assert_not_called()
 
 
 if __name__ == "__main__":
